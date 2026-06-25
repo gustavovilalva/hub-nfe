@@ -146,7 +146,7 @@
     <i class="bi bi-file-earmark-zip-fill me-1"></i> Hub NFe
     <small>Central de XML Fiscal</small>
   </div>
-  <div class="mt-2">
+  <div class="mt-2 flex-grow-1">
     <div class="section-label">Principal</div>
     <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
       <i class="bi bi-speedometer2"></i> Dashboard
@@ -159,6 +159,22 @@
       <i class="bi bi-cloud-upload"></i> Importar ZIP
     </a>
   </div>
+
+  {% if current_user.is_authenticated %}
+  <div style="border-top: 1px solid rgba(255,255,255,.15); padding: .9rem 1.2rem;">
+    <div style="font-size:.75rem; color:rgba(255,255,255,.55); margin-bottom:.25rem;">Logado como</div>
+    <div style="font-size:.85rem; color:#fff; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      {{ current_user.nome }}
+    </div>
+    <div style="font-size:.72rem; color:rgba(255,255,255,.5); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:.6rem;">
+      {{ current_user.email }}
+    </div>
+    <a href="{{ url_for('logout') }}" class="btn btn-sm w-100"
+       style="background:rgba(255,255,255,.12); color:#fff; border:1px solid rgba(255,255,255,.2); font-size:.8rem;">
+      <i class="bi bi-box-arrow-right me-1"></i> Sair
+    </a>
+  </div>
+  {% endif %}
 </nav>
 
 <!-- Conteúdo -->
