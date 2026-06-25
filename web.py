@@ -23,7 +23,7 @@ from xml_parser import parse_nfe_xml
 
 load_dotenv()
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder=".")
 app.secret_key = os.getenv("SECRET_KEY", os.urandom(24))
 
 UPLOAD_MAX_MB = int(os.getenv("UPLOAD_MAX_MB", "200"))
