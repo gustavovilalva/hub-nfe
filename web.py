@@ -229,6 +229,21 @@ def logout():
 
 # ─── Rotas principais ─────────────────────────────────────────────────────────
 
+@app.route("/aliquota", methods=["POST"])
+@login_required
+def salvar_aliquota():
+    try:
+        aliquota = float(request.form.get("aliquota", 0))
+        aliquota = max(0.0, min(100.0, aliquota))
+    except (ValueError, TypeError):
+        aliquota = 0.0
+    db = get_db()
+    db.atualizar_aliquota(current_user.id, aliquota)
+    db.close()
+    flash(f"Alíquota atualizada para {aliquota:.2f}%.", "success")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/")
 @login_required
 def dashboard():
@@ -236,6 +251,10 @@ def dashboard():
     db = get_db()
     stats = db.estatisticas(uid)
     ultimas = db.buscar(limit=8, usuario_id=uid)
+
+    # Alíquota do usuário
+    u = db.buscar_usuario_por_id(uid)
+    aliquota = float(u.get("aliquota") or 0) if u else 0.0
 
     cur = db.conn.execute(
         "SELECT situacao, COUNT(*) as qtd, SUM(valor_total) as total "
@@ -261,11 +280,33 @@ def dashboard():
         (uid,)
     )
     top_dest = [dict(r) for r in cur.fetchall()]
+
+    # Valor do mês atual para cálculo de imposto
+    cur = db.conn.execute(
+        """SELECT COALESCE(SUM(valor_total), 0) as total
+           FROM notas_fiscais
+           WHERE usuario_id = ? AND SUBSTR(data_emissao,1,7) = STRFTIME('%Y-%m', 'now')""",
+        (uid,)
+    )
+    valor_mes_atual = cur.fetchone()["total"] or 0.0
+
+    # Valor do ano atual
+    cur = db.conn.execute(
+        """SELECT COALESCE(SUM(valor_total), 0) as total
+           FROM notas_fiscais
+           WHERE usuario_id = ? AND SUBSTR(data_emissao,1,4) = STRFTIME('%Y', 'now')""",
+        (uid,)
+    )
+    valor_ano_atual = cur.fetchone()["total"] or 0.0
+
     db.close()
 
     return render_template("dashboard.html",
         stats=stats, ultimas=ultimas,
         por_situacao=por_situacao, por_mes=por_mes, top_dest=top_dest,
+        aliquota=aliquota,
+        valor_mes_atual=valor_mes_atual,
+        valor_ano_atual=valor_ano_atual,
     )
 
 
