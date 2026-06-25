@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}Buscar Notas — Hub NFe{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-search me-2 text-primary"></i>Buscar Notas</h1>
+</div>
+
+<!-- Formulário de busca -->
+<div class="table-card p-3 mb-4">
+  <form method="GET" action="{{ url_for('buscar') }}" id="form-busca">
+    <div class="row g-2">
+      <div class="col-md-2">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Nº da nota</label>
+        <input class="form-control form-control-sm" name="numero" value="{{ args.get('numero','') }}" placeholder="ex: 1234">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Nome do destinatário</label>
+        <input class="form-control form-control-sm" name="nome" value="{{ args.get('nome','') }}" placeholder="parcial">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold" style="font-size:.8rem">CNPJ / CPF</label>
+        <input class="form-control form-control-sm" name="cnpj" value="{{ args.get('cnpj','') }}" placeholder="parcial">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Situação</label>
+        <select class="form-select form-select-sm" name="situacao">
+          <option value="">Todas</option>
+          {% for op in ['Autorizada','Cancelada','Sem protocolo'] %}
+          <option value="{{ op }}" {% if args.get('situacao')==op %}selected{% endif %}>{{ op }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Data início</label>
+        <input class="form-control form-control-sm" type="date" name="data_inicio" value="{{ args.get('data_inicio','') }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Data fim</label>
+        <input class="form-control form-control-sm" type="date" name="data_fim" value="{{ args.get('data_fim','') }}">
+      </div>
+      <div class="col-md-1">
+        <label class="form-label fw-semibold" style="font-size:.8rem">UF</label>
+        <input class="form-control form-control-sm" name="uf" value="{{ args.get('uf','') }}" placeholder="SP" maxlength="2" style="text-transform:uppercase">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Valor mín (R$)</label>
+        <input class="form-control form-control-sm" type="number" step="0.01" name="valor_min" value="{{ args.get('valor_min','') }}">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Valor máx (R$)</label>
+        <input class="form-control form-control-sm" type="number" step="0.01" name="valor_max" value="{{ args.get('valor_max','') }}">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label fw-semibold" style="font-size:.8rem">Chave de acesso</label>
+        <input class="form-control form-control-sm" name="chave" value="{{ args.get('chave','') }}" placeholder="44 dígitos ou parcial">
+      </div>
+      <div class="col-md-2 d-flex align-items-end gap-2">
+        <button class="btn btn-primary btn-sm flex-grow-1" type="submit">
+          <i class="bi bi-search me-1"></i> Buscar
+        </button>
+        <a href="{{ url_for('buscar') }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-x-lg"></i>
+        </a>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Resultados -->
+{% if total > 0 %}
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <small class="text-muted">
+    <strong>{{ total }}</strong> nota(s) encontrada(s)
+    {% if total > 50 %} — exibindo página {{ pagina }} de {{ total_paginas }}{% endif %}
+  </small>
+</div>
+
+<div class="table-card">
+  <div class="table-responsive">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Nº / Série</th>
+          <th>Data</th>
+          <th>Destinatário</th>
+          <th>CNPJ/CPF</th>
+          <th>UF</th>
+          <th class="text-end">Valor (R$)</th>
+          <th>Situação</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for n in resultados %}
+        <tr>
+          <td><a href="{{ url_for('detalhe_nota', chave=n.chave_acesso) }}" class="fw-semibold text-decoration-none">{{ n.numero }}-{{ n.serie }}</a></td>
+          <td>{{ (n.data_emissao or '')[:10] }}</td>
+          <td>{{ (n.nome_dest or '')[:35] }}</td>
+          <td><small class="text-muted font-monospace">{{ n.cnpj_dest }}</small></td>
+          <td>{{ n.uf_dest }}</td>
+          <td class="text-end fw-semibold">{{ "{:,.2f}".format(n.valor_total or 0) }}</td>
+          <td>
+            {% if 'Autorizada' in (n.situacao or '') %}
+              <span class="badge badge-autorizada">Autorizada</span>
+            {% elif 'Cancelada' in (n.situacao or '') %}
+              <span class="badge badge-cancelada">Cancelada</span>
+            {% else %}
+              <span class="badge badge-other">{{ n.situacao }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="{{ url_for('detalhe_nota', chave=n.chave_acesso) }}" class="btn btn-outline-primary btn-sm" title="Ver detalhes">
+                <i class="bi bi-eye"></i>
+              </a>
+              <a href="{{ url_for('download_xml', chave=n.chave_acesso) }}" class="btn btn-outline-secondary btn-sm" title="Baixar XML">
+                <i class="bi bi-download"></i>
+              </a>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Paginação -->
+{% if total_paginas > 1 %}
+<nav class="mt-3">
+  <ul class="pagination pagination-sm justify-content-center">
+    {% if pagina > 1 %}
+    <li class="page-item">
+      <a class="page-link" href="?{{ args | replace('pagina', '') }}&pagina={{ pagina - 1 }}">‹ Anterior</a>
+    </li>
+    {% endif %}
+    {% for p in range(1, total_paginas + 1) %}
+      {% if p == pagina %}
+        <li class="page-item active"><span class="page-link">{{ p }}</span></li>
+      {% elif p <= 3 or p >= total_paginas - 2 or (p >= pagina - 1 and p <= pagina + 1) %}
+        <li class="page-item">
+          <a class="page-link" href="?{{ args | replace('pagina', '') }}&pagina={{ p }}">{{ p }}</a>
+        </li>
+      {% elif p == 4 or p == total_paginas - 3 %}
+        <li class="page-item disabled"><span class="page-link">…</span></li>
+      {% endif %}
+    {% endfor %}
+    {% if pagina < total_paginas %}
+    <li class="page-item">
+      <a class="page-link" href="?{{ args | replace('pagina', '') }}&pagina={{ pagina + 1 }}">Próxima ›</a>
+    </li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+{% elif request.args %}
+<div class="alert alert-warning">
+  <i class="bi bi-exclamation-triangle me-1"></i>
+  Nenhuma nota encontrada com os filtros informados.
+</div>
+{% else %}
+<div class="text-center text-muted py-5">
+  <i class="bi bi-search fs-1 d-block mb-3 opacity-25"></i>
+  Preencha pelo menos um filtro acima para buscar notas.
+</div>
+{% endif %}
+{% endblock %}

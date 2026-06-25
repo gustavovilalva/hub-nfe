@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Hub NFe{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <h1><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h1>
+  <a href="{{ url_for('importar') }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-cloud-upload me-1"></i> Importar XMLs
+  </a>
+</div>
+
+<!-- Cards de resumo -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background:#dbeafe; color:#1d4ed8"><i class="bi bi-file-earmark-text"></i></div>
+      <div>
+        <div class="value">{{ "{:,}".format(stats.total or 0) }}</div>
+        <div class="label">Total de notas</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background:#d1fae5; color:#065f46"><i class="bi bi-cash-coin"></i></div>
+      <div>
+        <div class="value">R$ {{ "{:,.0f}".format(stats.valor_total or 0) }}</div>
+        <div class="label">Valor acumulado</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background:#fef9c3; color:#854d0e"><i class="bi bi-calendar3"></i></div>
+      <div>
+        <div class="value">{{ stats.meses or 0 }}</div>
+        <div class="label">Meses cobertos</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="icon" style="background:#fce7f3; color:#9d174d"><i class="bi bi-clock-history"></i></div>
+      <div>
+        <div class="value" style="font-size:1rem;">{{ stats.mais_recente or '—' }}</div>
+        <div class="label">Última nota</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <!-- Últimas notas -->
+  <div class="col-lg-8">
+    <div class="table-card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock me-1"></i> Últimas notas importadas</span>
+        <a href="{{ url_for('buscar') }}" class="btn btn-outline-primary btn-sm">Ver todas</a>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nº</th><th>Data</th><th>Destinatário</th><th>UF</th>
+              <th class="text-end">Valor (R$)</th><th>Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for n in ultimas %}
+            <tr style="cursor:pointer" onclick="location.href='{{ url_for('detalhe_nota', chave=n.chave_acesso) }}'">
+              <td><strong>{{ n.numero }}</strong>-{{ n.serie }}</td>
+              <td>{{ (n.data_emissao or '')[:10] }}</td>
+              <td>{{ (n.nome_dest or '')[:30] }}</td>
+              <td>{{ n.uf_dest }}</td>
+              <td class="text-end">{{ "{:,.2f}".format(n.valor_total or 0) }}</td>
+              <td>
+                {% if 'Autorizada' in (n.situacao or '') %}
+                  <span class="badge badge-autorizada">Autorizada</span>
+                {% elif 'Cancelada' in (n.situacao or '') %}
+                  <span class="badge badge-cancelada">Cancelada</span>
+                {% else %}
+                  <span class="badge badge-other">{{ n.situacao }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="text-center text-muted py-4">
+              Nenhuma nota importada ainda. <a href="{{ url_for('importar') }}">Importe um ZIP</a>.
+            </td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Por situação -->
+  <div class="col-lg-4">
+    <div class="table-card h-100">
+      <div class="card-header"><i class="bi bi-pie-chart me-1"></i> Por situação</div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead class="table-light"><tr><th>Situação</th><th class="text-end">Qtd</th><th class="text-end">Total (R$)</th></tr></thead>
+          <tbody>
+            {% for s in por_situacao %}
+            <tr>
+              <td>
+                {% if 'Autorizada' in (s.situacao or '') %}
+                  <span class="badge badge-autorizada">Autorizada</span>
+                {% elif 'Cancelada' in (s.situacao or '') %}
+                  <span class="badge badge-cancelada">Cancelada</span>
+                {% else %}
+                  <span class="badge badge-other">{{ s.situacao }}</span>
+                {% endif %}
+              </td>
+              <td class="text-end">{{ s.qtd }}</td>
+              <td class="text-end">{{ "{:,.0f}".format(s.total or 0) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center text-muted py-3">Sem dados</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Top destinatários -->
+{% if top_dest %}
+<div class="table-card mb-4">
+  <div class="card-header"><i class="bi bi-trophy me-1"></i> Top 5 clientes por valor</div>
+  <div class="table-responsive">
+    <table class="table mb-0">
+      <thead class="table-light">
+        <tr><th>Cliente</th><th class="text-end">Notas</th><th class="text-end">Total (R$)</th><th>Participação</th></tr>
+      </thead>
+      <tbody>
+        {% set total_geral = top_dest | sum(attribute='total') %}
+        {% for d in top_dest %}
+        {% set pct = ((d.total or 0) / (total_geral or 1) * 100) | round(1) %}
+        <tr>
+          <td>{{ d.nome_dest }}</td>
+          <td class="text-end">{{ d.qtd }}</td>
+          <td class="text-end"><strong>{{ "{:,.2f}".format(d.total or 0) }}</strong></td>
+          <td style="width:200px">
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress flex-grow-1" style="height:6px">
+                <div class="progress-bar bg-primary" style="width:{{ pct }}%"></div>
+              </div>
+              <small class="text-muted">{{ pct }}%</small>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Evolução mensal -->
+{% if por_mes %}
+<div class="table-card">
+  <div class="card-header"><i class="bi bi-bar-chart me-1"></i> Evolução mensal (últimos 12 meses)</div>
+  <div class="p-3">
+    <canvas id="chartMes" height="80"></canvas>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if por_mes %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const labels = {{ por_mes | map(attribute='mes') | list | tojson }};
+const valores = {{ por_mes | map(attribute='total') | list | tojson }};
+const qtds    = {{ por_mes | map(attribute='qtd')   | list | tojson }};
+
+new Chart(document.getElementById('chartMes'), {
+  type: 'bar',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Valor (R$)',
+      data: valores,
+      backgroundColor: 'rgba(26,111,196,.7)',
+      borderRadius: 4,
+      yAxisID: 'y',
+    },{
+      label: 'Qtd notas',
+      data: qtds,
+      type: 'line',
+      borderColor: '#f59e0b',
+      backgroundColor: 'transparent',
+      pointRadius: 4,
+      yAxisID: 'y2',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y:  { position: 'left',  ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR') } },
+      y2: { position: 'right', grid: { drawOnChartArea: false } },
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

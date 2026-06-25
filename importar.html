@@ -1,0 +1,226 @@
+{% extends "base.html" %}
+{% block title %}Importar XMLs — Hub NFe{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cloud-upload me-2 text-primary"></i>Importar XMLs</h1>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <!-- Área de upload -->
+    <div class="table-card p-4 mb-3">
+      <h5 class="mb-1"><i class="bi bi-file-zip me-1"></i> Enviar arquivo ZIP</h5>
+      <p class="text-muted mb-3" style="font-size:.87rem">
+        Exporte as NFes do Tiny em <strong>Notas Fiscais → Exportar XMLs</strong>,
+        baixe o .zip gerado e envie aqui. O hub vai extrair e indexar todos os XMLs automaticamente.
+      </p>
+
+      <div id="drop-zone">
+        <i class="bi bi-file-zip"></i>
+        <div class="fw-semibold mb-1">Arraste o arquivo ZIP aqui</div>
+        <div class="text-muted" style="font-size:.85rem">ou clique para selecionar</div>
+        <div class="text-muted mt-2" style="font-size:.78rem">Tamanho máximo: {{ max_mb }} MB</div>
+      </div>
+      <input type="file" id="file-input" accept=".zip" class="d-none">
+
+      <div id="file-info" class="mt-3 d-none">
+        <div class="d-flex align-items-center gap-2 p-2 bg-light rounded">
+          <i class="bi bi-file-zip text-primary fs-5"></i>
+          <div class="flex-grow-1">
+            <div id="file-name" class="fw-semibold" style="font-size:.87rem"></div>
+            <div id="file-size" class="text-muted" style="font-size:.78rem"></div>
+          </div>
+          <button class="btn btn-sm btn-outline-danger" onclick="limparArquivo()">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </div>
+
+      <button id="btn-importar" class="btn btn-primary w-100 mt-3" disabled onclick="iniciarImportacao()">
+        <i class="bi bi-upload me-1"></i> Importar
+      </button>
+    </div>
+
+    <!-- Dica -->
+    <div class="alert alert-info" style="font-size:.85rem">
+      <i class="bi bi-lightbulb me-1"></i>
+      <strong>Dica:</strong> o ZIP pode conter XMLs de várias competências. O hub detecta automaticamente
+      notas já importadas e ignora duplicatas — é seguro re-enviar o mesmo arquivo.
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <!-- Progresso -->
+    <div id="painel-progresso" class="table-card p-4 d-none">
+      <h5 class="mb-3"><i class="bi bi-activity me-1"></i> Progresso</h5>
+
+      <div class="d-flex justify-content-between mb-1" style="font-size:.85rem">
+        <span id="prog-label">Aguardando...</span>
+        <span id="prog-pct">0%</span>
+      </div>
+      <div class="progress mb-3" style="height:10px">
+        <div id="prog-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width:0%"></div>
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-4">
+          <div class="text-center p-2 rounded" style="background:#f0fdf4">
+            <div id="cnt-importados" class="fw-bold fs-4 text-success">0</div>
+            <div style="font-size:.75rem;color:#166534">Importadas</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="text-center p-2 rounded" style="background:#fefce8">
+            <div id="cnt-ignorados" class="fw-bold fs-4 text-warning">0</div>
+            <div style="font-size:.75rem;color:#854d0e">Ignoradas</div>
+          </div>
+        </div>
+        <div class="col-4">
+          <div class="text-center p-2 rounded" style="background:#fef2f2">
+            <div id="cnt-erros" class="fw-bold fs-4 text-danger">0</div>
+            <div style="font-size:.75rem;color:#991b1b">Erros</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="log-box"></div>
+
+      <div id="btn-dashboard" class="mt-3 d-none">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-success w-100">
+          <i class="bi bi-speedometer2 me-1"></i> Ver Dashboard
+        </a>
+      </div>
+    </div>
+
+    <!-- Estado inicial (sem importação) -->
+    <div id="painel-vazio" class="table-card p-4">
+      <h5 class="mb-3 text-muted"><i class="bi bi-question-circle me-1"></i> Como exportar do Tiny</h5>
+      <ol class="text-muted" style="font-size:.87rem; line-height:2">
+        <li>No Tiny ERP, acesse <strong>Notas Fiscais → NFe</strong></li>
+        <li>Selecione o período desejado</li>
+        <li>Clique em <strong>Exportar → Exportar XML das NFe</strong></li>
+        <li>Aguarde o Tiny gerar o arquivo <strong>.zip</strong></li>
+        <li>Baixe e envie aqui no Hub NFe</li>
+      </ol>
+      <div class="alert alert-secondary mt-3 mb-0" style="font-size:.82rem">
+        Você também pode arrastar XMLs avulsos zipados — o hub aceita qualquer ZIP com arquivos <code>.xml</code> de NFe.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let arquivoSelecionado = null;
+let pollingId = null;
+
+// ── Drag & drop ────────────────────────────────────────
+const dropZone  = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) selecionarArquivo(f);
+});
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) selecionarArquivo(fileInput.files[0]);
+});
+
+function selecionarArquivo(f) {
+  if (!f.name.toLowerCase().endsWith('.zip')) {
+    alert('Por favor, selecione um arquivo .zip');
+    return;
+  }
+  arquivoSelecionado = f;
+  document.getElementById('file-name').textContent = f.name;
+  document.getElementById('file-size').textContent = formatBytes(f.size);
+  document.getElementById('file-info').classList.remove('d-none');
+  document.getElementById('btn-importar').disabled = false;
+}
+
+function limparArquivo() {
+  arquivoSelecionado = null;
+  fileInput.value = '';
+  document.getElementById('file-info').classList.add('d-none');
+  document.getElementById('btn-importar').disabled = true;
+}
+
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+// ── Upload ─────────────────────────────────────────────
+function iniciarImportacao() {
+  if (!arquivoSelecionado) return;
+
+  document.getElementById('btn-importar').disabled = true;
+  document.getElementById('painel-vazio').classList.add('d-none');
+  document.getElementById('painel-progresso').classList.remove('d-none');
+
+  const form = new FormData();
+  form.append('arquivo', arquivoSelecionado);
+
+  fetch('/importar', { method: 'POST', body: form })
+    .then(r => r.json())
+    .then(data => {
+      if (data.erro) {
+        alert('Erro: ' + data.erro);
+        document.getElementById('btn-importar').disabled = false;
+        return;
+      }
+      pollingId = setInterval(atualizarProgresso, 1000);
+    })
+    .catch(e => {
+      alert('Erro ao enviar o arquivo: ' + e);
+      document.getElementById('btn-importar').disabled = false;
+    });
+}
+
+// ── Polling de progresso ───────────────────────────────
+function atualizarProgresso() {
+  fetch('/importar/status')
+    .then(r => r.json())
+    .then(s => {
+      const total = s.total || 1;
+      const pct = Math.round((s.processados / total) * 100);
+
+      document.getElementById('prog-bar').style.width = pct + '%';
+      document.getElementById('prog-pct').textContent = pct + '%';
+      document.getElementById('prog-label').textContent =
+        s.rodando
+          ? `Processando ${s.processados} de ${s.total}...`
+          : s.concluido ? 'Importação concluída!' : 'Aguardando...';
+
+      document.getElementById('cnt-importados').textContent = s.importados;
+      document.getElementById('cnt-ignorados').textContent  = s.ignorados;
+      document.getElementById('cnt-erros').textContent      = s.erros;
+
+      // Renderiza log (só novas linhas)
+      const logBox = document.getElementById('log-box');
+      logBox.innerHTML = s.log.slice(-80).map(l =>
+        `<div class="log-${l.tipo}">${escapeHtml(l.msg)}</div>`
+      ).join('');
+      logBox.scrollTop = logBox.scrollHeight;
+
+      if (s.concluido) {
+        clearInterval(pollingId);
+        document.getElementById('prog-bar').classList.remove('progress-bar-animated');
+        document.getElementById('btn-dashboard').classList.remove('d-none');
+      }
+    });
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+{% endblock %}

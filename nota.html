@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}NF {{ nota.numero }} — Hub NFe{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex align-items-center justify-content-between">
+  <h1>
+    <a href="{{ url_for('buscar') }}" class="text-muted text-decoration-none me-2" style="font-size:1rem">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    NF {{ nota.numero }}-{{ nota.serie }}
+    {% if 'Autorizada' in (nota.situacao or '') %}
+      <span class="badge badge-autorizada ms-2" style="font-size:.65rem;vertical-align:middle">Autorizada</span>
+    {% elif 'Cancelada' in (nota.situacao or '') %}
+      <span class="badge badge-cancelada ms-2" style="font-size:.65rem;vertical-align:middle">Cancelada</span>
+    {% else %}
+      <span class="badge badge-other ms-2" style="font-size:.65rem;vertical-align:middle">{{ nota.situacao }}</span>
+    {% endif %}
+  </h1>
+  <a href="{{ url_for('download_xml', chave=nota.chave_acesso) }}" class="btn btn-primary btn-sm">
+    <i class="bi bi-download me-1"></i> Baixar XML
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- Dados gerais -->
+  <div class="col-lg-6">
+    <div class="table-card p-0">
+      <div class="card-header"><i class="bi bi-info-circle me-1"></i> Identificação</div>
+      <table class="table table-sm mb-0">
+        <tbody>
+          <tr><th class="ps-3 text-muted" style="width:40%;font-size:.8rem">Número / Série</th>
+              <td>{{ nota.numero }} / {{ nota.serie }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Data de emissão</th>
+              <td>{{ (nota.data_emissao or '')[:10] }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Natureza da operação</th>
+              <td>{{ nota.natureza_op or '—' }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Tipo</th>
+              <td>{{ 'Saída' if nota.tipo == 'saida' else 'Entrada' }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Valor total</th>
+              <td><strong>R$ {{ "{:,.2f}".format(nota.valor_total or 0) }}</strong></td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Situação</th>
+              <td>{{ nota.situacao }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Importado em</th>
+              <td><small>{{ nota.sincronizado_em }}</small></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Emitente / Destinatário -->
+  <div class="col-lg-6">
+    <div class="table-card p-0 mb-3">
+      <div class="card-header"><i class="bi bi-building me-1"></i> Emitente</div>
+      <table class="table table-sm mb-0">
+        <tbody>
+          <tr><th class="ps-3 text-muted" style="width:35%;font-size:.8rem">Razão social</th>
+              <td>{{ nota.nome_emitente or '—' }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">CNPJ</th>
+              <td><span class="font-monospace">{{ nota.cnpj_emitente or '—' }}</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-card p-0">
+      <div class="card-header"><i class="bi bi-person me-1"></i> Destinatário</div>
+      <table class="table table-sm mb-0">
+        <tbody>
+          <tr><th class="ps-3 text-muted" style="width:35%;font-size:.8rem">Nome</th>
+              <td>{{ nota.nome_dest or '—' }}</td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">CNPJ / CPF</th>
+              <td><span class="font-monospace">{{ nota.cnpj_dest or '—' }}</span></td></tr>
+          <tr><th class="ps-3 text-muted" style="font-size:.8rem">Município / UF</th>
+              <td>{{ nota.municipio_dest or '—' }} / {{ nota.uf_dest or '—' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Chave de acesso -->
+  <div class="col-12">
+    <div class="table-card p-3">
+      <div class="d-flex align-items-center justify-content-between mb-1">
+        <span class="fw-semibold" style="font-size:.87rem"><i class="bi bi-key me-1"></i> Chave de acesso</span>
+        <button class="btn btn-outline-secondary btn-sm" onclick="copiar('{{ nota.chave_acesso }}')">
+          <i class="bi bi-clipboard"></i> Copiar
+        </button>
+      </div>
+      <code id="chave-text" style="font-size:.82rem;word-break:break-all">{{ nota.chave_acesso }}</code>
+    </div>
+  </div>
+
+  <!-- XML -->
+  {% if xml_content %}
+  <div class="col-12">
+    <div class="table-card p-0">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-code-slash me-1"></i> XML da Nota</span>
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-secondary btn-sm" onclick="copiarXml()">
+            <i class="bi bi-clipboard me-1"></i> Copiar XML
+          </button>
+          <a href="{{ url_for('download_xml', chave=nota.chave_acesso) }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-download me-1"></i> Baixar
+          </a>
+        </div>
+      </div>
+      <div class="p-3">
+        <pre id="xml-block">{{ xml_content | e }}</pre>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="alert alert-warning">
+      <i class="bi bi-exclamation-triangle me-1"></i>
+      Arquivo XML não encontrado no disco. O registro existe no banco mas o arquivo pode ter sido movido.
+    </div>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copiar(texto) {
+  navigator.clipboard.writeText(texto).then(() => {
+    alert('Chave copiada!');
+  });
+}
+function copiarXml() {
+  const xml = document.getElementById('xml-block').textContent;
+  navigator.clipboard.writeText(xml).then(() => {
+    alert('XML copiado para a área de transferência!');
+  });
+}
+</script>
+{% endblock %}
