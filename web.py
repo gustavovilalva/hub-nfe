@@ -24,7 +24,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 
 UPLOAD_MAX_MB = int(os.getenv("UPLOAD_MAX_MB", "200"))
