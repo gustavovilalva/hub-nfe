@@ -299,6 +299,16 @@ def dashboard():
     )
     valor_ano_atual = cur.fetchone()["total"] or 0.0
 
+    # Todos os meses disponíveis para o seletor de imposto
+    cur = db.conn.execute(
+        """SELECT SUBSTR(data_emissao,1,7) as mes, COALESCE(SUM(valor_total), 0) as total
+           FROM notas_fiscais
+           WHERE usuario_id = ? AND data_emissao IS NOT NULL AND data_emissao != ''
+           GROUP BY mes ORDER BY mes DESC""",
+        (uid,)
+    )
+    meses_imposto = [dict(r) for r in cur.fetchall()]
+
     db.close()
 
     return render_template("dashboard.html",
@@ -307,6 +317,7 @@ def dashboard():
         aliquota=aliquota,
         valor_mes_atual=valor_mes_atual,
         valor_ano_atual=valor_ano_atual,
+        meses_imposto=meses_imposto,
     )
 
 
