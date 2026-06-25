@@ -71,6 +71,11 @@ class HubDatabase:
                 self.conn.execute("ALTER TABLE notas_fiscais ADD COLUMN usuario_id INTEGER REFERENCES usuarios(id)")
             except sqlite3.OperationalError:
                 pass
+            # Migration: add aliquota to usuarios table
+            try:
+                self.conn.execute("ALTER TABLE usuarios ADD COLUMN aliquota REAL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass
             self.conn.commit()
 
     # ── Usuários ──────────────────────────────────────────────────────────────
@@ -102,6 +107,13 @@ class HubDatabase:
     def total_usuarios(self) -> int:
         cur = self.conn.execute("SELECT COUNT(*) FROM usuarios")
         return cur.fetchone()[0]
+
+    def atualizar_aliquota(self, user_id: int, aliquota: float) -> None:
+        self.conn.execute(
+            "UPDATE usuarios SET aliquota = ? WHERE id = ?",
+            (aliquota, user_id)
+        )
+        self.conn.commit()
 
     # ── XMLs ──────────────────────────────────────────────────────────────────
 
