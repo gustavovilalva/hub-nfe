@@ -49,7 +49,6 @@ class HubDatabase:
         self.xml_dir.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(db_path, timeout=30, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
-        self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.executescript(DB_SCHEMA)
 
         self.conn.commit()
