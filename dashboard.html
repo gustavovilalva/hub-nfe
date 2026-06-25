@@ -126,6 +126,70 @@
   </div>
 </div>
 
+<!-- Calculadora de Imposto -->
+<div class="table-card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-calculator me-1"></i> Estimativa de Imposto</span>
+    {% if aliquota > 0 %}
+      <span class="badge" style="background:#fef3c7;color:#92400e;font-size:.78rem;">Alíquota: {{ "%.2f"|format(aliquota) }}%</span>
+    {% endif %}
+  </div>
+  <div class="p-3">
+    <div class="row g-3 align-items-center">
+
+      <!-- Formulário de alíquota -->
+      <div class="col-md-4">
+        <form method="POST" action="{{ url_for('salvar_aliquota') }}">
+          <label class="form-label small fw-semibold mb-1">Sua alíquota de imposto (%)</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-percent"></i></span>
+            <input type="number" name="aliquota" step="0.01" min="0" max="100"
+                   class="form-control" id="inp-aliquota"
+                   value="{{ "%.2f"|format(aliquota) }}"
+                   placeholder="ex: 6.00"
+                   oninput="calcularAoVivo()">
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+          <small class="text-muted">Informe sua alíquota (ISS, Simples, etc.) para calcular o imposto estimado.</small>
+        </form>
+      </div>
+
+      <!-- Card imposto no mês -->
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="icon" style="background:#fef3c7; color:#92400e"><i class="bi bi-calendar-month"></i></div>
+          <div>
+            <div class="value" id="val-imposto-mes">
+              R$ {{ "{:,.2f}".format(valor_mes_atual * aliquota / 100) }}
+            </div>
+            <div class="label">Imposto est. — mês atual</div>
+            <div style="font-size:.72rem;color:#6c757d;margin-top:2px;">
+              Base: R$ {{ "{:,.2f}".format(valor_mes_atual) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card imposto no ano -->
+      <div class="col-md-4">
+        <div class="stat-card">
+          <div class="icon" style="background:#ede9fe; color:#5b21b6"><i class="bi bi-calendar-year"></i></div>
+          <div>
+            <div class="value" id="val-imposto-ano">
+              R$ {{ "{:,.2f}".format(valor_ano_atual * aliquota / 100) }}
+            </div>
+            <div class="label">Imposto est. — ano atual</div>
+            <div style="font-size:.72rem;color:#6c757d;margin-top:2px;">
+              Base: R$ {{ "{:,.2f}".format(valor_ano_atual) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- Top destinatários -->
 {% if top_dest %}
 <div class="table-card mb-4">
@@ -171,6 +235,17 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+const _valorMes = {{ valor_mes_atual | float }};
+const _valorAno = {{ valor_ano_atual | float }};
+
+function calcularAoVivo() {
+  const aliq = parseFloat(document.getElementById('inp-aliquota').value) || 0;
+  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  document.getElementById('val-imposto-mes').textContent = fmt(_valorMes * aliq / 100);
+  document.getElementById('val-imposto-ano').textContent = fmt(_valorAno * aliq / 100);
+}
+</script>
 {% if por_mes %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
