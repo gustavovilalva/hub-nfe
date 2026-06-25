@@ -154,18 +154,28 @@
         </form>
       </div>
 
-      <!-- Card imposto no mês -->
+      <!-- Card imposto por mês (selecionável) -->
       <div class="col-md-4">
-        <div class="stat-card">
-          <div class="icon" style="background:#fef3c7; color:#92400e"><i class="bi bi-calendar-month"></i></div>
-          <div>
-            <div class="value" id="val-imposto-mes">
-              R$ {{ "{:,.2f}".format(valor_mes_atual * aliquota / 100) }}
+        <div class="stat-card flex-column align-items-start gap-1" style="padding:.9rem 1.1rem;">
+          <div class="d-flex align-items-center gap-2 w-100">
+            <div class="icon" style="background:#fef3c7;color:#92400e;width:36px;height:36px;font-size:1.1rem;border-radius:8px;flex-shrink:0">
+              <i class="bi bi-calendar-month"></i>
             </div>
-            <div class="label">Imposto est. — mês atual</div>
-            <div style="font-size:.72rem;color:#6c757d;margin-top:2px;">
-              Base: R$ {{ "{:,.2f}".format(valor_mes_atual) }}
-            </div>
+            <select id="sel-mes" class="form-select form-select-sm" style="font-size:.8rem;" onchange="calcularAoVivo()">
+              {% for m in meses_imposto %}
+              <option value="{{ m.total }}"
+                {% if loop.first %}selected{% endif %}>
+                {{ m.mes }} — R$ {{ "{:,.2f}".format(m.total) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="value mt-1" id="val-imposto-mes" style="font-size:1.3rem;">
+            R$ {{ "{:,.2f}".format((meses_imposto[0].total if meses_imposto else 0) * aliquota / 100) }}
+          </div>
+          <div class="label">Imposto est. — mês selecionado</div>
+          <div id="base-mes" style="font-size:.72rem;color:#6c757d;">
+            Base: R$ {{ "{:,.2f}".format(meses_imposto[0].total if meses_imposto else 0) }}
           </div>
         </div>
       </div>
@@ -236,15 +246,27 @@
 
 {% block scripts %}
 <script>
-const _valorMes = {{ valor_mes_atual | float }};
 const _valorAno = {{ valor_ano_atual | float }};
+const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
 
 function calcularAoVivo() {
   const aliq = parseFloat(document.getElementById('inp-aliquota').value) || 0;
-  const fmt = v => 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-  document.getElementById('val-imposto-mes').textContent = fmt(_valorMes * aliq / 100);
-  document.getElementById('val-imposto-ano').textContent = fmt(_valorAno * aliq / 100);
+  const sel = document.getElementById('sel-mes');
+  const valorMes = sel ? (parseFloat(sel.value) || 0) : 0;
+
+  if (document.getElementById('val-imposto-mes'))
+    document.getElementById('val-imposto-mes').textContent = fmt(valorMes * aliq / 100);
+  if (document.getElementById('base-mes'))
+    document.getElementById('base-mes').textContent = 'Base: ' + fmt(valorMes);
+  if (document.getElementById('val-imposto-ano'))
+    document.getElementById('val-imposto-ano').textContent = fmt(_valorAno * aliq / 100);
 }
+
+// Atualiza base ao trocar o mês sem mexer na alíquota
+document.addEventListener('DOMContentLoaded', function() {
+  const sel = document.getElementById('sel-mes');
+  if (sel) sel.addEventListener('change', calcularAoVivo);
+});
 </script>
 {% if por_mes %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
