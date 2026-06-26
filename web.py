@@ -229,6 +229,35 @@ def logout():
 
 # ─── Rotas principais ─────────────────────────────────────────────────────────
 
+@app.route("/alterar-senha", methods=["GET", "POST"])
+@login_required
+def alterar_senha():
+    if request.method == "POST":
+        senha_atual = request.form.get("senha_atual", "")
+        nova_senha  = request.form.get("nova_senha", "")
+        confirma    = request.form.get("confirma", "")
+
+        db = get_db()
+        u  = db.buscar_usuario_por_id(current_user.id)
+
+        if not check_password_hash(u["senha_hash"], senha_atual):
+            db.close()
+            flash("Senha atual incorreta.", "danger")
+        elif len(nova_senha) < 6:
+            db.close()
+            flash("A nova senha deve ter pelo menos 6 caracteres.", "danger")
+        elif nova_senha != confirma:
+            db.close()
+            flash("As senhas não coincidem.", "danger")
+        else:
+            db.atualizar_senha(current_user.id, generate_password_hash(nova_senha))
+            db.close()
+            flash("Senha alterada com sucesso!", "success")
+            return redirect(url_for("dashboard"))
+
+    return render_template("alterar_senha.html")
+
+
 @app.route("/aliquota", methods=["POST"])
 @login_required
 def salvar_aliquota():
