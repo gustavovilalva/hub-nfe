@@ -115,6 +115,13 @@ class HubDatabase:
         )
         self.conn.commit()
 
+    def atualizar_senha(self, user_id: int, nova_senha_hash: str) -> None:
+        self.conn.execute(
+            "UPDATE usuarios SET senha_hash = ? WHERE id = ?",
+            (nova_senha_hash, user_id)
+        )
+        self.conn.commit()
+
     # ── XMLs ──────────────────────────────────────────────────────────────────
 
     def _xml_file_path(self, data_emissao: str, chave_acesso: str) -> Path:
