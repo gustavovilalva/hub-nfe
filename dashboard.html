@@ -4,9 +4,38 @@
 {% block content %}
 <div class="page-header d-flex align-items-center justify-content-between">
   <h1><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h1>
-  <a href="{{ url_for('importar') }}" class="btn btn-primary btn-sm">
-    <i class="bi bi-cloud-upload me-1"></i> Importar XMLs
-  </a>
+  <div class="d-flex gap-2">
+    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#modalLimpar">
+      <i class="bi bi-trash me-1"></i> Limpar NFes
+    </button>
+    <a href="{{ url_for('importar') }}" class="btn btn-primary btn-sm">
+      <i class="bi bi-cloud-upload me-1"></i> Importar XMLs
+    </a>
+  </div>
+</div>
+
+<!-- Modal de confirmação -->
+<div class="modal fade" id="modalLimpar" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0 pb-0">
+        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Limpar todas as NFes</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Isso vai excluir <strong>todas as {{ stats.total or 0 }} nota(s)</strong> da sua conta permanentemente.</p>
+        <p class="text-muted small mb-0">Você poderá importar um novo ZIP depois. Esta ação não pode ser desfeita.</p>
+      </div>
+      <div class="modal-footer border-0 pt-0">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+        <form method="POST" action="{{ url_for('limpar_notas') }}">
+          <button type="submit" class="btn btn-danger btn-sm">
+            <i class="bi bi-trash me-1"></i> Sim, excluir tudo
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Cards de resumo -->

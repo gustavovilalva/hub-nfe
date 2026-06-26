@@ -229,6 +229,16 @@ def logout():
 
 # ─── Rotas principais ─────────────────────────────────────────────────────────
 
+@app.route("/limpar-notas", methods=["POST"])
+@login_required
+def limpar_notas():
+    db = get_db()
+    total = db.limpar_notas(current_user.id)
+    db.close()
+    flash(f"{total} nota(s) excluída(s) com sucesso.", "success")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/alterar-senha", methods=["GET", "POST"])
 @login_required
 def alterar_senha():

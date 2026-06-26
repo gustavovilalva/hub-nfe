@@ -122,6 +122,13 @@ class HubDatabase:
         )
         self.conn.commit()
 
+    def limpar_notas(self, user_id: int) -> int:
+        cur = self.conn.execute(
+            "DELETE FROM notas_fiscais WHERE usuario_id = ?", (user_id,)
+        )
+        self.conn.commit()
+        return cur.rowcount
+
     # ── XMLs ──────────────────────────────────────────────────────────────────
 
     def _xml_file_path(self, data_emissao: str, chave_acesso: str) -> Path:
